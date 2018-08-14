@@ -1,0 +1,1002 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Windows.Input;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace Pseudoman
+{
+    public partial class Form1 : Form
+    {
+        Keys desiredKey = default(Keys);
+        Keys nextKey;
+        Keys momentum;
+        int[,] loc = new int[5, 2];
+        int[,] defpos = new int[5, 2];
+        PictureBox[] ghosts = new PictureBox[4];
+        int basicdelta = 8;
+        int numberOfLives = 3;
+        int centering = 12;
+        int[][] map;
+        string[] mapInput;
+        PictureBox[,] pellet;
+        Thread thread;
+        int edible, edibleTime = 50;
+        Image red, pink, aqua, orange, blue;
+
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            thread = new Thread(GameLogic);
+
+            ghosts[0] = gho1;
+            ghosts[1] = gho2;
+            ghosts[2] = gho3;
+            ghosts[3] = gho4;
+
+            red = gho1.Image;
+            pink = gho2.Image;
+            aqua = gho3.Image;
+            orange = gho4.Image;
+            blue = Image.FromFile("images/ghosts/ghost_vulnerable_0.png");
+
+            mapInput = new string[260];
+            map = new int[260][];
+
+            StreamReader reader = new StreamReader("images/map/map_0.txt");
+            int i = 0;
+            //int firstPellet = 0, pelletCount = 0;
+
+
+            while (reader.Peek() != -1)
+            {
+
+                mapInput[i] = reader.ReadLine();
+                map[i] = new int[mapInput[i].Length];
+                for (int j = 0; j < mapInput[i].Length; j++)
+                {
+                    map[i][j] = int.Parse(mapInput[i][j].ToString());
+                    //if (map[i][j] == 2 && firstPellet == 0) firstPellet = i;
+                }
+                i++;
+            }
+
+            /*for(i=0; i<map[firstPellet].Length; i++)
+            {
+                if (map[firstPellet][i]==2) { pelletCount++; }
+            }*/
+
+            pellet = new PictureBox[i - 1, map[0].Length];
+
+            SetPellets();
+
+
+            thread.Start();
+        }
+
+        /// <summary>
+        /// When arrow key is pressed, it will be considered as standart input key to fit the needs of KeyDown method.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Form1_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
+        {
+            switch (e.KeyCode)
+            {
+                case Keys.Down:
+                case Keys.Up:
+                case Keys.Left:
+                case Keys.Right:
+                    e.IsInputKey = true;
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// When key is pressed, desiredKey is changed to pressed key. Only controls of the game can be considered as desiredKey.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Form1_KeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.KeyCode)
+            {
+                case Keys.Down:
+                    desiredKey = e.KeyCode;
+                    break;
+                case Keys.Up:
+                    desiredKey = e.KeyCode;
+                    break;
+                case Keys.Right:
+                    desiredKey = e.KeyCode;
+                    break;
+                case Keys.Left:
+                    desiredKey = e.KeyCode;
+                    break;
+            }
+        }
+
+
+
+        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            thread.Abort();
+        }
+
+
+        //--------------------------------------------------------------------------------------------------
+
+
+
+        public void GameLogic()
+        {
+            int deltapacx = 0, deltapacy = 0;
+            Random rnd = new Random(10);
+            int help, deltax = 0, deltay = 0;
+            bool keyPressed;
+            edible = 0;
+
+            Init();
+
+
+            while (numberOfLives >= 0)
+            {
+
+                bool pacInCollision = false;
+                //Pseu movement------------------------------------------
+
+                /*if (desiredKey != default(Keys)) keyPressed = true; else keyPressed = false;
+
+                if (keyPressed)
+                {
+                    SetDelta(desiredKey, deltapacx, deltapacy, out deltapacx, out deltapacy);
+
+
+                    Point point = new Point(2 * (loc[0, 0] + deltapacx) - centering, 2 * (loc[0, 1] + deltapacy) - centering);
+
+                    if (TryMove(pac, loc[0, 0], deltapacx, loc[0, 1], deltapacy, out pacInCollision))
+                    {
+                        loc[0, 0] += deltapacx;
+                        loc[0, 1] += deltapacy;
+                        Invoke((Action)delegate { pac.Location = point; });
+                        nextKey = desiredKey;
+                    }
+                    else
+                    {
+
+                        SetDelta(nextKey, deltapacx, deltapacy, out deltapacx, out deltapacy);
+
+                        point = new Point(2 * (loc[0, 0] + deltapacx) - centering, 2 * (loc[0, 1] + deltapacy) - centering);
+
+                        if (TryMove(pac, loc[0, 0], deltapacx, loc[0, 1], deltapacy, out pacInCollision))
+                        {
+                            loc[0, 0] += deltapacx;
+                            loc[0, 1] += deltapacy;
+                            Invoke((Action)delegate { pac.Location = point; });
+                        }
+
+                        nextKey = desiredKey;
+
+                    }
+                }
+                else
+                {
+                    SetDelta(nextKey, deltapacx, deltapacy, out deltapacx, out deltapacy);
+
+                    Point point = new Point(2 * (loc[0, 0] + deltapacx) - centering, 2 * (loc[0, 1] + deltapacy) - centering);
+
+                    if (TryMove(pac, loc[0, 0], deltapacx, loc[0, 1], deltapacy, out pacInCollision))
+                    {
+                        loc[0, 0] += deltapacx;
+                        loc[0, 1] += deltapacy;
+                        Invoke((Action)delegate { pac.Location = point; });
+                        nextKey = desiredKey;
+                    }
+                }*/
+
+
+                MovePac(out pacInCollision);
+
+                /*SetDelta(desiredKey, deltapacx, deltapacy, out deltapacx, out deltapacy);
+                if (TryMove(pac, loc[0, 0], deltapacx, loc[0, 1], deltapacy, out pacInCollision))
+                {
+                    Point point = new Point(2 * (loc[0, 0] + deltapacx) - centering, 2 * (loc[0, 1] + deltapacy) - centering);
+
+                    loc[0, 0] += deltapacx;
+                    loc[0, 1] += deltapacy;
+                    Invoke((Action)delegate { pac.Location = point; });
+                    momentum = desiredKey;
+                    desiredKey = default(Keys);
+                }
+                else
+                {
+                    SetDelta(nextKey, deltapacx, deltapacy, out deltapacx, out deltapacy);
+                    if (TryMove(pac, loc[0, 0], deltapacx, loc[0, 1], deltapacy, out pacInCollision))
+                    {
+                        Point point = new Point(2 * (loc[0, 0] + deltapacx) - centering, 2 * (loc[0, 1] + deltapacy) - centering);
+
+                        loc[0, 0] += deltapacx;
+                        loc[0, 1] += deltapacy;
+                        Invoke((Action)delegate { pac.Location = point; });
+                        momentum = nextKey;
+                        nextKey = default(Keys);
+                    }
+                    else
+                    {
+                        SetDelta(momentum, deltapacx, deltapacy, out deltapacx, out deltapacy);
+                        if (TryMove(pac, loc[0, 0], deltapacx, loc[0, 1], deltapacy, out pacInCollision))
+                        {
+                            Point point = new Point(2 * (loc[0, 0] + deltapacx) - centering, 2 * (loc[0, 1] + deltapacy) - centering);
+
+                            loc[0, 0] += deltapacx;
+                            loc[0, 1] += deltapacy;
+                            Invoke((Action)delegate { pac.Location = point; });
+                        }
+                    }
+                }*/
+
+
+                desiredKey = default(Keys);
+                if (pacInCollision)
+                {
+                    if (Collision())
+                    {
+                        Thread.Sleep(250);
+                        continue;
+                    }
+                }
+
+                /*if (pacInCollision)
+                {
+                    if (edible > 0)
+                    {
+                        EatAGhost();
+                    }
+                    else
+                    {
+                        Init();
+                        numberOfLives--;
+                        if (numberOfLives >= 0)
+                            Invoke((Action)delegate { label1.Text = numberOfLives.ToString(); });
+                        Thread.Sleep(250);
+                        continue;
+                    }
+                }*/
+
+                //Ghosts movement--------------------------------------
+                for (int i = 0; i < 4; i++)
+                {
+                    /*help = rnd.Next(4);
+                    switch (help)
+                    {
+                        case 0: deltax = 0; deltay = basicdelta; break;
+                        case 1: deltax = 0; deltay = -basicdelta; break;
+                        case 2: deltax = basicdelta; deltay = 0; break;
+                        case 3: deltax = -basicdelta; deltay = 0; break;
+                    }*/
+                    if (CanMove(loc[i + 1, 0], loc[i + 1, 1]))
+                    {
+                        Point bfs = Bfs(loc[i + 1, 0], loc[i + 1, 1]);
+
+                        if (bfs == default(Point))
+                        {
+                            ChooseRandom(out deltax, out deltay, rnd);
+                        }
+                        else
+                        {
+                            deltax = bfs.X - loc[i + 1, 0];
+                            deltay = bfs.Y - loc[i + 1, 1];
+                        }
+                        Point p = new Point(2 * (loc[i + 1, 0] + deltax) - centering, 2 * (loc[i + 1, 1] + deltay) - centering);
+
+                        if (edible > 0)
+                        {
+                            edible--;
+                            deltax *= -1;
+                            deltay *= -1;
+                            if (edible == 0) MakeGhostsEatersAgain();
+                        }
+                        if (TryMove(ghosts[i], loc[i + 1, 0], deltax, loc[i + 1, 1], deltay, out bool contact))
+                        {
+                            /*loc[i + 1, 0] += deltax;
+                            loc[i + 1, 1] += deltay;
+                            Invoke((Action)delegate { ghosts[i].Location = p; });*/
+
+                            ReallyMoveThem(i + 1, deltax, deltay);
+
+                            if (contact) { pacInCollision = true; }
+                        }
+                        else
+                        {
+                            ChooseRandom(loc[i + 1, 0], loc[i + 1, 1], out deltax, out deltay, rnd);
+
+                            if (TryMove(ghosts[i], loc[i + 1, 0], deltax, loc[i + 1, 1], deltay, out contact))
+                            {
+
+                                /*p = new Point(2 * (loc[i + 1, 0] + deltax) - centering, 2 * (loc[i + 1, 1] + deltay) - centering);
+                                loc[i + 1, 0] += deltax;
+                                loc[i + 1, 1] += deltay;
+                                Invoke((Action)delegate { ghosts[i].Location = p; });*/
+                                ReallyMoveThem(i + 1, deltax, deltay);
+                                if (contact) pacInCollision = true;
+                            }
+                        }
+                    }
+                }
+
+                if (pacInCollision)
+                {
+                    Collision();
+                }
+
+                /*if (pacInCollision)
+                {
+                    if (edible > 0)
+                    {
+                        EatAGhost();
+                    }
+                    else
+                    {
+                        //map reset
+                        Init();
+                        numberOfLives--;
+                        if (numberOfLives >= 0)
+                            Invoke((Action)delegate { label1.Text = numberOfLives.ToString(); });
+                        else
+                        {
+                            Invoke((Action)delegate
+                            {
+                                thread.Abort();
+                                Form1_FormClosed(null, null);
+                            });
+                        }
+                    }
+                }*/
+                Thread.Sleep(250);
+            }
+        }
+
+        private bool CanMove(int x, int y)
+        {
+            if (y - 16 > 0)
+                switch (map[y - 16][x])
+            {
+                case 1: case 2: case 3: case 4: case 5: return true;
+            }
+            switch (map[y + 16][x])
+            {
+                case 1: case 2: case 3: case 4: case 5: return true;
+            }
+            if (x - 16 > 0)
+                switch (map[y][x - 16])
+            {
+                case 1: case 2: case 3: case 4: case 5: return true;
+            }
+            if (x + 16 < map[0].Length)
+                switch (map[y][x + 16])
+            {
+                case 1: case 2: case 3: case 4: case 5: return true;
+            }
+            return false;
+        }
+
+        private bool TryMove(PictureBox obj, int y, int deltay, int x, int deltax, out bool contact)
+        {
+
+
+            contact = false;
+            int h1, h2;
+
+            if (x + deltax < 0 || y + deltay < 0 || x + deltax >= map.Length || y + deltay >= map[0].Length) return false;
+
+            
+
+            //checking for move
+            for (int i = 1; i <= basicdelta; i++)
+            {
+                h1 = x + (i * deltax) / basicdelta;
+                h2 = y + (i * deltay) / basicdelta;
+
+                if (map[x][y] == 5)
+                {
+                    switch (map[h1][h2])
+                    {
+
+                        case 2: EatPellet(h1, h2); break;
+                        case 3: EatPowerPellet(h1, h2); break;
+                        case 4: case 5: case 1: break;
+                        case 6: contact = true; break;
+                        case 7: return true;
+                        default: return false;
+                    }
+                }
+                else
+                {
+                    switch (map[h1][h2])
+                    {
+                        case 2: case 3: case 4: case 1: break;
+                        case 5: contact = true; break;
+                        case 7: return true;
+                        default: return false;
+                    }
+                }
+            }
+
+            //checking for further contact
+            int plusx, minusx, plusy, minusy;
+            for (int i = 1; i <= basicdelta; i++)
+            {
+                plusx = (deltax + i != 0) ? x + deltax + i : 0;
+                minusx = (deltax - i != 0 && x + deltax - i > 0) ? x + deltax - i : 0;
+                plusy = (deltay + i != 0 && y + deltay + i < map[0].Length) ? y + deltay + i : 0;
+                minusy = (deltay - i != 0 && y + deltay - i > 0) ? y + deltay - i : 0;
+
+                if (map[x][y] == 5)
+                {
+                    if (map[plusx][y + deltay] == 6 ||
+                        map[x + deltax][minusy] == 6 ||
+                        map[minusx][y + deltay] == 6 ||
+                        map[x + deltax][plusy] == 6)
+                    {
+                        contact = true;
+                    }
+                }
+                else if (map[plusx][y + deltay] == 5 ||
+                    map[x + deltax][minusy] == 5 ||
+                    map[minusx][y + deltay] == 5 ||
+                    map[x + deltax][plusy] == 5)
+                {
+                    contact = true;
+                }
+                else if (map[plusx][y + deltay] == 6 ||
+                    map[x + deltax][minusy] == 6 ||
+                    map[minusx][y + deltay] == 6 ||
+                    map[x + deltax][plusy] == 6)
+                {
+                    return false;
+                }
+
+            }
+
+            MoveThem(y, deltay, x, deltax);
+            return true;
+        }
+
+        private void MoveThem(int y, int deltay, int x, int deltax)
+        {
+            if (deltax != 0 || deltay != 0)
+            {
+                map[x + deltax][y + deltay] = (map[x][y] == 5) ? 5 : 6;
+                if (pellet[x, y] == null) map[x][y] = 1;
+                else if (pellet[x, y].Width == 5) map[x][y] = 2;
+                else map[x][y] = 3;
+            }
+        }
+
+        private void ReallyMoveThem(int i, int deltax, int deltay)
+        {
+            Point point = new Point(2 * (loc[i, 0] + deltax) - centering, 2 * (loc[i, 1] + deltay) - centering);
+
+            loc[i, 0] += deltax;
+            loc[i, 1] += deltay;
+            if (i == 0)
+            {
+                Invoke((Action)delegate { pac.Location = point; });
+            }
+            else
+            {
+                Invoke((Action)delegate { ghosts[i - 1].Location = point; });
+            }
+        }
+
+        private void EatPellet(int i, int j)
+        {
+            map[i][j] = 1;
+            Invoke((Action)delegate { this.Controls.Remove(pellet[i, j]); });
+        }
+
+        private void EatPowerPellet(int i, int j)
+        {
+            map[i][j] = 1;
+            Invoke((Action)delegate { this.Controls.Remove(pellet[i, j]); });
+            MakeGhostsEdible();
+        }
+
+        private void MakeGhostsEdible()
+        {
+            edible = edibleTime;
+            Invoke((Action)delegate
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    ghosts[i].Image = blue;
+                }
+            });
+
+        }
+
+        private void MakeGhostsEatersAgain()
+        {
+            Invoke((Action)delegate
+            {
+                gho1.Image = red;
+                gho2.Image = pink;
+                gho3.Image = aqua;
+                gho4.Image = orange;
+            });
+
+        }
+
+        private void Init()
+        {
+
+            Point point = new Point(2 * defpos[0, 0] - centering, 2 * defpos[0, 1] - centering);
+            Invoke((Action)delegate { pac.Location = point; });
+
+            point = new Point(2 * defpos[1, 0] - centering, 2 * defpos[1, 1] - centering);
+            Invoke((Action)delegate { gho1.Location = point; });
+
+            point = new Point(2 * defpos[2, 0] - centering, 2 * defpos[2, 1] - centering);
+            Invoke((Action)delegate { gho2.Location = point; });
+
+            point = new Point(2 * defpos[3, 0] - centering, 2 * defpos[3, 1] - centering);
+            Invoke((Action)delegate { gho3.Location = point; });
+
+            point = new Point(2 * defpos[4, 0] - centering, 2 * defpos[4, 1] - centering);
+            Invoke((Action)delegate { gho4.Location = point; });
+
+            DeleteCurrentPositions();
+
+            for (int i = 0; i < 5; i++)
+            {
+                loc[i, 0] = defpos[i, 0];
+                loc[i, 1] = defpos[i, 1];
+                map[loc[i, 1]][loc[i, 0]] = 6;
+            }
+            map[loc[0, 1]][loc[0, 0]] = 5;
+
+
+
+
+
+            //Infinite cycle until real control of the game is pressed.
+            while (desiredKey == default(Keys)) { }
+            nextKey = desiredKey;
+        }
+
+        #region IsPacInCollision, IsAround
+        private bool IsPacInCollision(Point point)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                if (point == ghosts[i].Location) return true;
+            }
+
+            return false;
+        }
+
+        private bool IsAround(Point p, Point r)
+        {
+            //if (!((p.X < r.X && p.X + basicdelta > r.X) || (p.X > r.X && p.X - basicdelta < r.X))) return false;
+            //if (!((p.Y < r.Y && p.Y + basicdelta > r.Y) || (p.Y > r.Y && p.Y - basicdelta < r.Y))) return false;
+            if (p.X != r.X || p.Y != r.Y) return false;
+            return true;
+        }
+        #endregion
+
+        private void SetPellets()
+        {
+            int ii = 1;
+            for (int i = 0; i < map.Length; i++)
+            {
+                for (int j = 0; j < map[i].Length; j++)
+                {
+                    switch (map[i][j])
+                    {
+                        case 2: pellet[i, j] = MakePellet(2 * j, 2 * i); break;
+                        case 3: pellet[i, j] = MakePowerPellet(2 * j, 2 * i); break;
+                        case 5:
+                            defpos[0, 0] = j;
+                            defpos[0, 1] = i;
+                            break;
+                        case 6:
+                            defpos[ii, 0] = j;
+                            defpos[ii, 1] = i;
+                            ii++;
+                            break;
+                        case 7: pellet[i, j] = Teleport(2 * j, 2 * i); break;
+                    }
+                }
+            }
+        }
+
+        private PictureBox MakePellet(int x, int y)
+        {
+            PictureBox pellet = new PictureBox();
+            pellet.BackColor = Color.Yellow;
+            pellet.Size = new Size(5, 5);
+            pellet.Location = new Point(x, y);
+            this.Controls.Add(pellet);
+            return pellet;
+        }
+
+        private PictureBox MakePowerPellet(int x, int y)
+        {
+            PictureBox pPellet = new PictureBox();
+            pPellet.BackColor = Color.Yellow;
+            pPellet.Size = new Size(9, 9);
+            pPellet.Location = new Point(x - 2, y - 2);
+            this.Controls.Add(pPellet);
+            return pPellet;
+        }
+        private PictureBox Teleport(int x, int y)
+        {
+            PictureBox teleport = new PictureBox();
+            teleport.Tag = "teleport";
+            return teleport;
+        }
+
+        private void DeleteCurrentPositions()
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                int x = loc[i, 1];
+                int y = loc[i, 0];
+
+                if (pellet[x, y] == null) map[x][y] = 1;
+                else if (pellet[x, y].Width == 5) map[x][y] = 2;
+                else map[x][y] = 3;
+            }
+        }
+
+        private Point Bfs(int x, int y)
+        {
+            Point start = new Point(x, y);
+            Point p, up, down, left, right;
+            Point[] newones = new Point[4];
+            Queue<Point> points = new Queue<Point>();
+            int[,] bfsmap = new int[map.Length, map[0].Length];
+            Point[,] backtrack = new Point[map.Length, map[0].Length];
+            int length = 1;
+            bool foundpac = false;
+            bool stop = false;
+
+
+            points.Enqueue(start);
+            backtrack[start.Y, start.X] = start;
+            bfsmap[start.Y, start.X] = length;
+
+            while (points.Count != 0 && !foundpac && length < 16)
+            {
+                p = points.Dequeue();
+                switch (map[p.Y][p.X])
+                {
+                    case 5:
+                        foundpac = true;
+                        stop = true;
+                        break;
+                    case 0:
+                        stop = true;
+                        break;
+                }
+
+                if (!stop)
+                {
+                    newones[0] = (p.X - basicdelta > 0) ? new Point(p.X - basicdelta, p.Y) : default(Point);
+                    newones[1] = (p.X + basicdelta < map[0].Length) ? new Point(p.X + basicdelta, p.Y) : default(Point);
+                    newones[2] = (p.Y - basicdelta > 0) ? new Point(p.X, p.Y - basicdelta) : default(Point);
+                    newones[3] = (p.Y + basicdelta < map.Length) ? new Point(p.X, p.Y + basicdelta) : default(Point);
+
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (backtrack[newones[i].Y, newones[i].X] == default(Point))
+                        {
+                            backtrack[newones[i].Y, newones[i].X] = p;
+                            bfsmap[newones[i].Y, newones[i].X] = bfsmap[p.Y, p.X] + 1;
+                            points.Enqueue(newones[i]);
+                        }
+                    }
+                }
+                else stop = false;
+            }
+
+
+            if (foundpac)
+            {
+                p = backtrack[loc[0, 1], loc[0, 0]];
+                while (backtrack[p.Y, p.X] != start)
+                    p = backtrack[p.Y, p.X];
+                return new Point(p.X, p.Y);
+            }
+            else return default(Point);
+        }
+
+        private void ChooseRandom(out int deltax, out int deltay, Random rnd)
+        {
+            int help;
+            help = rnd.Next(4);
+            deltax = 0;
+            deltay = 0;
+
+            switch (help)
+            {
+                case 0: deltax = 0; deltay = basicdelta; break;
+                case 1: deltax = 0; deltay = -basicdelta; break;
+                case 2: deltax = basicdelta; deltay = 0; break;
+                case 3: deltax = -basicdelta; deltay = 0; break;
+            }
+        }
+
+        private void ChooseRandom(int y, int x, out int deltax, out int deltay, Random rnd)
+        {
+            deltax = 0;
+            deltay = 0;
+            int[] paths = new int[4];
+            int a = CountPaths(y, x, paths);
+            int help = rnd.Next(a);
+
+            switch (paths[help])
+            {
+                case 0: deltay = 0; deltax = basicdelta; break;
+                case 1: deltay = 0; deltax = -basicdelta; break;
+                case 2: deltay = basicdelta; deltax = 0; break;
+                case 3: deltay = -basicdelta; deltax = 0; break;
+            }
+        }
+
+        private int CountPaths(int x, int y, int[] paths)
+        {
+            int i = 0;
+            if (x + 16 < map[0].Length)
+            switch (map[y][x + 16])
+            {
+                case 1: case 2: case 3: case 4: case 5: paths[i] = 0; i++; break;
+            }
+            if (x - 16 > 0) 
+            switch (map[y][x - 16])
+            {
+                case 1: case 2: case 3: case 4: case 5: paths[i] = 1; i++; break;
+            }
+            switch (map[y + 16][x])
+            {
+                case 1: case 2: case 3: case 4: case 5: paths[i] = 2; i++; break;
+            }
+            if (y - 16 > 0) 
+            switch (map[y - 16][x])
+            {
+                case 1: case 2: case 3: case 4: case 5: paths[i] = 3; i++; break;
+            }
+            return i;
+        }
+
+        private void SetDelta(Keys key, int sofardeltax, int sofardeltay, out int deltapacx, out int deltapacy)
+        {
+            deltapacx = sofardeltax;
+            deltapacy = sofardeltay;
+            switch (key)
+            {
+                case Keys.Down:
+                    deltapacx = 0;
+                    deltapacy = basicdelta;
+                    //desiredKey = e.KeyCode;
+                    break;
+                case Keys.Up:
+                    deltapacx = 0;
+                    deltapacy = -basicdelta;
+                    //desiredKey = e.KeyCode;
+                    break;
+                case Keys.Right:
+                    deltapacx = basicdelta;
+                    deltapacy = 0;
+                    //desiredKey = e.KeyCode;
+                    break;
+                case Keys.Left:
+                    deltapacx = -basicdelta;
+                    deltapacy = 0;
+                    //desiredKey = e.KeyCode;
+                    break;
+            }
+        }
+
+        private void MovePac(out bool pacInCollision)
+        {
+            int deltapacx = 0;
+            int deltapacy = 0;
+
+            if (desiredKey != default(Keys))
+            {
+                SetDelta(desiredKey, deltapacx, deltapacy, out deltapacx, out deltapacy);
+                //else if (nextKey != default(Keys))
+                //  SetDelta(nextKey, deltapacx, deltapacy, out deltapacx, out deltapacy);
+                // else SetDelta(momentum, deltapacx, deltapacy, out deltapacx, out deltapacy);
+
+                if (TryMove(pac, loc[0, 0], deltapacx, loc[0, 1], deltapacy, out pacInCollision))
+                {
+                    /*
+                    Point point = new Point(2 * (loc[0, 0] + deltapacx) - centering, 2 * (loc[0, 1] + deltapacy) - centering);
+
+                    loc[0, 0] += deltapacx;
+                    loc[0, 1] += deltapacy;
+                    Invoke((Action)delegate { pac.Location = point; });*/
+
+                    ReallyMoveThem(0, deltapacx, deltapacy);
+
+                    momentum = desiredKey;
+                    desiredKey = default(Keys);
+                    return;
+                }
+                else
+                {
+                    nextKey = desiredKey;
+                    desiredKey = default(Keys);
+
+                    SetDelta(momentum, deltapacx, deltapacy, out deltapacx, out deltapacy);
+                    if (TryMove(pac, loc[0, 0], deltapacx, loc[0, 1], deltapacy, out pacInCollision))
+                    {
+                        /*
+                        Point point = new Point(2 * (loc[0, 0] + deltapacx) - centering, 2 * (loc[0, 1] + deltapacy) - centering);
+
+                        loc[0, 0] += deltapacx;
+                        loc[0, 1] += deltapacy;
+                        Invoke((Action)delegate { pac.Location = point; });
+                        */
+                        ReallyMoveThem(0, deltapacx, deltapacy);
+                        return;
+                    }
+                    else
+                    {
+                        momentum = default(Keys);
+                        return;
+                    }
+                }
+            }
+
+            if (nextKey != default(Keys))
+            {
+                SetDelta(nextKey, deltapacx, deltapacy, out deltapacx, out deltapacy);
+                if (TryMove(pac, loc[0, 0], deltapacx, loc[0, 1], deltapacy, out pacInCollision))
+                {
+                    /*
+                    Point point = new Point(2 * (loc[0, 0] + deltapacx) - centering, 2 * (loc[0, 1] + deltapacy) - centering);
+
+                    loc[0, 0] += deltapacx;
+                    loc[0, 1] += deltapacy;
+                    Invoke((Action)delegate { pac.Location = point; });
+                    */
+                    ReallyMoveThem(0, deltapacx, deltapacy);
+
+                    momentum = nextKey;
+                    nextKey = default(Keys);
+                    return;
+                }
+                else
+                {
+                    SetDelta(momentum, deltapacx, deltapacy, out deltapacx, out deltapacy);
+                    if (TryMove(pac, loc[0, 0], deltapacx, loc[0, 1], deltapacy, out pacInCollision))
+                    {
+                        /*
+                        Point point = new Point(2 * (loc[0, 0] + deltapacx) - centering, 2 * (loc[0, 1] + deltapacy) - centering);
+
+                        loc[0, 0] += deltapacx;
+                        loc[0, 1] += deltapacy;
+                        Invoke((Action)delegate { pac.Location = point; });
+                        */
+                        ReallyMoveThem(0, deltapacx, deltapacy);
+                        return;
+                    }
+                    else
+                    {
+                        momentum = default(Keys);
+                        return;
+                    }
+                }
+            }
+
+            SetDelta(momentum, deltapacx, deltapacy, out deltapacx, out deltapacy);
+            if (TryMove(pac, loc[0, 0], deltapacx, loc[0, 1], deltapacy, out pacInCollision))
+            {
+                /*
+                Point point = new Point(2 * (loc[0, 0] + deltapacx) - centering, 2 * (loc[0, 1] + deltapacy) - centering);
+
+                loc[0, 0] += deltapacx;
+                loc[0, 1] += deltapacy;
+                Invoke((Action)delegate { pac.Location = point; });
+                */
+                ReallyMoveThem(0, deltapacx, deltapacy);
+                return;
+            }
+            else
+            {
+                momentum = default(Keys);
+                return;
+            }
+        }
+
+        private void EatAGhost(int i)
+        {
+            switch (i)
+            {
+                case 0: ghosts[i].Image = red; break;
+                case 1: ghosts[i].Image = pink; break;
+                case 2: ghosts[i].Image = aqua; break;
+                case 3: ghosts[i].Image = orange; break;
+            }
+
+            int x = loc[i + 1, 1];
+            int y = loc[i + 1, 0];
+
+            if (pellet[x, y] == null)
+            {
+                map[x][y] = 1;
+            }
+            else if (pellet[x, y].Width == 5)
+            {
+                EatPellet(x, y);
+            }
+            else
+            {
+                EatPowerPellet(x, y);
+            }
+
+            loc[i + 1, 0] = defpos[i + 1, 0];
+            loc[i + 1, 1] = defpos[i + 1, 1];
+
+            Point p = new Point(2 * loc[i + 1, 0] - centering, 2 * loc[i + 1, 1] - centering);
+
+            Invoke((Action)delegate { ghosts[i].Location = p; });
+        }
+
+        private bool Collision()
+        {
+            PictureBox ghost = null;
+            //find which ghost is in collision
+            int i;
+            for (i = 0; i< 4; i++)
+            {
+                if (loc[0, 0] - 8 <= loc[i + 1, 0] && loc[0, 0] + 8 >= loc[i + 1, 0] &&
+                    loc[0, 1] - 8 <= loc[i + 1, 1] && loc[0, 1] + 8 >= loc[i + 1, 1])
+                {
+                    ghost = ghosts[i];
+                    break;
+                }
+            }
+
+            //Eat or be eaten
+            if (ghost == null) return false;
+            if (ghost.Image==blue)
+            {
+                EatAGhost(i);
+            }
+            else
+            {
+                Init();
+                numberOfLives--;
+                if (numberOfLives >= 0)
+                    Invoke((Action)delegate { label1.Text = numberOfLives.ToString(); });
+                else
+                {
+                    Invoke((Action)delegate
+                    {
+                        thread.Abort();
+                        Form1_FormClosed(null, null);
+                    });
+                }
+                return true;
+            }
+            
+            return false;
+        }
+
+    }
+}
