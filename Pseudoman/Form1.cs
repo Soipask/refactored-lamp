@@ -176,8 +176,8 @@ namespace Pseudoman
         /// <summary>
         /// Delegate used in bonus mode to move every character.
         /// </summary>
-        /// <param name="i"></param>
-        /// <param name="b"></param>
+        /// <param name="i">Character Id.</param>
+        /// <param name="b">Is there a collision between main character and ghost?</param>
         delegate void MoveChar(int i, out bool b);
 
         #endregion
