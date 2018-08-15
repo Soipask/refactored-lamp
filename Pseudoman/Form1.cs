@@ -1831,7 +1831,18 @@ namespace Pseudoman
 
         private void ServerSide()
         {
+
+            //INITIALIZATION
             Invoke((Action)delegate { label3.Text = "ROUND 1"; });
+            
+            bool pacInCollision = false, dead;
+            bool[] controlled = new bool[5];
+            Label[] scores;
+            PictureBox[] characters;
+            int connected = 0;
+            int[] prevPos = new int[2];
+            int n = 0;
+
 
             ghosts = new PictureBox[5];
             ghosts[0] = gho1;
@@ -1840,16 +1851,6 @@ namespace Pseudoman
             ghosts[3] = gho4;
             ghosts[4] = pseu;
 
-            bool pacInCollision = false, dead;
-            bool[] controlled = new bool[5];
-            Label[] scores;
-            PictureBox[] characters;
-            int connected = 0;
-
-
-            //INITIALIZATION
-
-
             Init();
             map[loc[0, 1]][loc[0, 0]] = 5;
             Invoke((Action)delegate { InitLabels(); });
@@ -1857,8 +1858,7 @@ namespace Pseudoman
             
 
 
-            //game movement
-            int n = 0;
+            //GAME MOVEMENT
 
             MoveChar[] moves = new MoveChar[5];
             moves[0] = new MoveChar(MoveUser);
@@ -1879,11 +1879,11 @@ namespace Pseudoman
                 }
             }
 
-            int[] prevPos = new int[2];
-            //game logic
+
+            //GAME LOGIC
             for (int i = 0; i <= n; i++)
             {
-                Invoke((Action)delegate { label3.Text = "ROUND " + i.ToString(); });
+                Invoke((Action)delegate { label3.Text = "ROUND " + (i+1).ToString(); });
                 
                 //Infinite cycle until real control of the game is pressed.
                 ReadKey(0);
@@ -1895,17 +1895,16 @@ namespace Pseudoman
 
                 dead = false;
 
+                //GAME CYCLE
                 while (!dead)
                 {
-                    //serverside
-                    
-
+                    //SERVER 1 (listening)
                     for (int l = 1; l<=4; l++)
                     {
                         SetDesKeyServer(l);
                     }
 
-
+                    //SERVER 2 (sending char moves)
                     for (int ii = 0; ii <= 4; ii++)
                     {
                         if (clients[ii] == null) break;
@@ -1925,8 +1924,8 @@ namespace Pseudoman
                             writer.Write(s);
                         }
                     }
-                    canContinue = false;
 
+                    //MOVEPAC
                     moves[i](i, out pacInCollision);
 
 
@@ -1941,6 +1940,7 @@ namespace Pseudoman
                         }
                     pacInCollision = false;
 
+                    //MOVEGHO
                     for (int j = 0; j <= 4; j++)
                     {
                         if (j == i) continue;
@@ -1970,11 +1970,12 @@ namespace Pseudoman
 
                     if (pacInCollision) if (BonusModeCollision(i, out dead)) ;
 
-                            if (pelletsCount == 0)
-                            {
-                                dead = true;
-                            }
+                    if (pelletsCount == 0)
+                    {
+                        dead = true;
+                    }
 
+                    //SERVER 3 (sending AI movement)
                     for (int ii = 0; ii <= 4; ii++) 
                     {
                         if (clients[ii] == null) break;
@@ -1995,14 +1996,18 @@ namespace Pseudoman
                         }
                     }
 
+                    //POWER PELLET CONTROL
                     if (edible > 0)
                     {
                         edible--;
                         if (edible == 0) MakeGhostsEatersAgain();
                     }
 
+                    //SLEEP
                     Thread.Sleep(250);
                 }
+
+                //NEW LEVEL INIT
                 if (i < 4)
                     BonusRoundInit(i + 1);
             }
@@ -2011,6 +2016,18 @@ namespace Pseudoman
 
         private void ClientSide()
         {
+            //INITIALIZATION
+            bool pacInCollision = false, dead = false;
+            bool[] controlled = new bool[5];
+            Label[] scores;
+            PictureBox[] characters;
+            int n = 0;
+            MoveChar[] moves = new MoveChar[5];
+            int[] prevPos = new int[2];
+            var writer = new BinaryWriter(streams[0]);
+            var reader = new BinaryReader(streams[0]);
+            int s = 0;
+
 
             Invoke((Action)delegate { label3.Text = "ROUND 1"; });
             ghosts = new PictureBox[5];
@@ -2019,31 +2036,17 @@ namespace Pseudoman
             ghosts[2] = gho3;
             ghosts[3] = gho4;
             ghosts[4] = pseu;
-
-            bool pacInCollision = false, dead = false;
-            bool[] controlled = new bool[5];
-            Label[] scores;
-            PictureBox[] characters;
-
-
-            //INITIALIZATION
-
-
+            
             Init();
             map[loc[0, 1]][loc[0, 0]] = 5;
             Invoke((Action)delegate { InitLabels(); });
-
-
-
+            
             for (int i = 0; i < 5; i++)
             {
                 nextKey[i] = desiredKey[i];
             }
 
-            //game movement
-            int n = 0;
-
-            MoveChar[] moves = new MoveChar[5];
+            //GAME MOVEMENT
             moves[0] = new MoveChar(MoveUser);
             controlled[0] = true;
 
@@ -2062,15 +2065,7 @@ namespace Pseudoman
                 }
             }
 
-            int[] prevPos = new int[2];
-
-
-
-            var writer = new BinaryWriter(streams[0]);
-            var reader = new BinaryReader(streams[0]);
-            int s = 0;
-
-            //game logic
+            //GAME LOGIC
             for (int i = 0; i <= n; i++)
             {
                 Invoke((Action)delegate { label3.Text = "ROUND " + i.ToString(); });
@@ -2079,9 +2074,10 @@ namespace Pseudoman
 
                 dead = false;
 
+                //GAME CYCLE
                 while (!dead)
                 {
-                    //client side
+                    //CLIENT 1 (send move)
                     switch (desiredKey[clientPort - 1300])
                     {
                         case Keys.Up: s = 101; break;
@@ -2092,6 +2088,7 @@ namespace Pseudoman
                     }
                     writer.Write(s);
 
+                    //CLIENT 2 (listen to all moves)
                     int k;
                     k = reader.Read();
                     while (k == 0){ k=reader.Read(); }
@@ -2108,9 +2105,8 @@ namespace Pseudoman
                         }
                         k = reader.Read();
                     }
-                    //-------------
-                    canContinue = false;
 
+                    //MOVEPAC
                     moves[i](i, out pacInCollision);
 
 
@@ -2125,6 +2121,7 @@ namespace Pseudoman
                         }
                     pacInCollision = false;
 
+                    //MOVEAI
                     for (int j = 0; j <= 4; j++)
                     {
                         if (j == i) continue;
@@ -2136,23 +2133,256 @@ namespace Pseudoman
 
                     if (pacInCollision) if (BonusModeCollision(i, out dead)) ;
 
-                            if (pelletsCount == 0)
-                            {
-                                dead = true;
-                            }
+                    if (pelletsCount == 0)
+                    {
+                        dead = true;
+                    }
 
 
-
+                    //POWER PELLET CONTROL
                     if (edible > 0)
                     {
                         edible--;
                         if (edible == 0) MakeGhostsEatersAgain();
                     }
 
+                    //SLEEP
                     Thread.Sleep(250);
                 }
 
+                //NEW LEVEL
                 BonusRoundInit(i+1);
+            }
+        }
+
+        private void Bonus()
+        {
+            //INITIALIZATION
+            Invoke((Action)delegate { label3.Text = "ROUND 1"; });
+
+            bool pacInCollision = false, dead;
+            bool[] controlled = new bool[5];
+            Label[] scores;
+            PictureBox[] characters;
+            MoveChar[] moves = new MoveChar[5];
+            int[] prevPos = new int[2];
+            int n = 0;
+            var writer = (isClient) ? new BinaryWriter(streams[0]) : null;
+            var reader = (isClient) ? new BinaryReader(streams[0]) : null;
+            int s = 0;
+
+
+            ghosts = new PictureBox[5];
+            ghosts[0] = gho1;
+            ghosts[1] = gho2;
+            ghosts[2] = gho3;
+            ghosts[3] = gho4;
+            ghosts[4] = pseu;
+
+            Init();
+            map[loc[0, 1]][loc[0, 0]] = 5;
+            Invoke((Action)delegate { InitLabels(); });
+
+
+            //GAME MOVEMENT
+            moves[0] = new MoveChar(MoveUser);
+            controlled[0] = true;
+
+            for (int i = 1; i <= 4; i++)
+            {
+                if (clients[n] != null || isClient)
+                {
+                    controlled[i] = true;
+                    moves[i] = new MoveChar(MoveUser);
+                    n++;
+                }
+                else
+                {
+                    controlled[i] = false;
+                    moves[i] = new MoveChar(MoveAI);
+                }
+            }
+
+            //GAME LOGIC
+            for (int i = 0; i <= n; i++)
+            {
+                Invoke((Action)delegate { label3.Text = "ROUND " + (i + 1).ToString(); });
+
+                //Infinite cycle until real control of the game is pressed.
+                ReadKey(clientPort - 1300);
+
+                for (int m = 0; m < 5; m++)
+                {
+                    nextKey[m] = desiredKey[m];
+                }
+
+                dead = false;
+
+                //GAME CYCLE
+                while (!dead)
+                {
+                    /*if (isClient)
+                    {
+                        SendMove();
+                        GetMoves();
+                        MovePacBonus();
+                        MoveGhoBonus();
+                        SpecialControl();
+                    }
+                    else
+                    {
+                        SetDesKeys();
+                        SendUserMoves();
+                        MovePacBonus();
+                        MoveGhoBonus();
+                        SendAIMoves();
+                        SpecialControl();
+                    }*/
+
+                    //CLIENT 1 (send move)
+                    switch (desiredKey[clientPort - 1300])
+                    {
+                        case Keys.Up: s = 101; break;
+                        case Keys.Down: s = 102; break;
+                        case Keys.Left: s = 103; break;
+                        case Keys.Right: s = 104; break;
+                        case default(Keys): s = 100; break;
+                    }
+                    writer.Write(s);
+
+                    //SERVER 1 (listening)
+                    for (int l = 1; l <= 4; l++)
+                    {
+                        SetDesKeyServer(l);
+                    }
+
+                    //CLIENT 2 (listen to all moves)
+                    int k;
+                    k = reader.Read();
+                    while (k == 0) { k = reader.Read(); }
+                    for (int ii = 0; ii < 5; ii++)
+                    {
+                        switch (k)
+                        {
+                            case 101: desiredKey[ii] = Keys.Up; break;
+                            case 102: desiredKey[ii] = Keys.Down; break;
+                            case 103: desiredKey[ii] = Keys.Left; break;
+                            case 104: desiredKey[ii] = Keys.Right; break;
+                            case 100: desiredKey[ii] = default(Keys); break;
+                            default: ii--; break;
+                        }
+                        k = reader.Read();
+                    }
+
+                    //SERVER 2 (sending char moves)
+                    for (int ii = 0; ii <= 4; ii++)
+                    {
+                        if (clients[ii] == null) break;
+                        writer = new BinaryWriter(streams[ii]);
+                        for (int j = 0; j <= n; j++)
+                        {
+                            s = 0;
+                            switch (desiredKey[j])
+                            {
+                                case Keys.Up: s = 101; break;
+                                case Keys.Down: s = 102; break;
+                                case Keys.Left: s = 103; break;
+                                case Keys.Right: s = 104; break;
+                                case Keys.None: s = 100; break;
+                            }
+
+                            writer.Write(s);
+                        }
+                    }
+
+
+
+                    //MOVEPAC
+                    moves[i](i, out pacInCollision);
+
+
+                    if (pacInCollision)
+                        if (BonusModeCollision(i, out dead))
+                        {
+                            if (dead)
+                            {
+                                Thread.Sleep(250);
+                                continue;
+                            }
+                        }
+                    pacInCollision = false;
+                    
+                    //MOVEGHO
+                    for (int j = 0; j <= 4; j++)
+                    {
+                        if (j == i) continue;
+
+                        if (!controlled[j] && !isClient)
+                        {
+                            prevPos[0] = loc[j, 0];
+                            prevPos[1] = loc[j, 1];
+                        }
+
+                        moves[j](j, out bool contact);
+
+                        if (!controlled[j] && !isClient)
+                        {
+                            if (prevPos[0] - loc[j, 0] == 0)
+                            {
+                                if (prevPos[1] - loc[j, 1] < 0) desiredKey[j] = Keys.Down;
+                                else if (prevPos[1] - loc[j, 1] > 0) desiredKey[j] = Keys.Up;
+                                else desiredKey[j] = Keys.None;
+                            }
+                            else if (prevPos[0] - loc[j, 0] < 0) desiredKey[j] = Keys.Right;
+                            else desiredKey[j] = Keys.Left;
+                        }
+
+                        if (contact) pacInCollision = true;
+                    }
+
+                    if (pacInCollision) if (BonusModeCollision(i, out dead)) ;
+
+                    if (pelletsCount == 0)
+                    {
+                        dead = true;
+                    }
+
+
+                    //SERVER 3 (sending AI movement)
+                    for (int ii = 0; ii <= 4; ii++)
+                    {
+                        if (clients[ii] == null) break;
+                        writer = new BinaryWriter(streams[ii]);
+                        for (int j = n + 1; j < 5; j++)
+                        {
+                            s = 0;
+                            switch (desiredKey[j])
+                            {
+                                case Keys.Up: s = 101; break;
+                                case Keys.Down: s = 102; break;
+                                case Keys.Left: s = 103; break;
+                                case Keys.Right: s = 104; break;
+                                case Keys.None: s = 100; break;
+                            }
+
+                            writer.Write(s);
+                        }
+                    }
+
+                    //POWER PELLET CONTROL
+                    if (edible > 0)
+                    {
+                        edible--;
+                        if (edible == 0) MakeGhostsEatersAgain();
+                    }
+
+                    //SLEEP
+                    Thread.Sleep(250);
+                }
+
+                //NEW LEVEL INIT
+                if (i < 4)
+                    BonusRoundInit(i + 1);
             }
         }
     }
