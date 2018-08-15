@@ -18,6 +18,8 @@ namespace Pseudoman
     
     public partial class Form1 : Form
     {
+#region Init of variables
+
         /// <summary>
         /// Game mode.
         /// </summary>
@@ -128,8 +130,14 @@ namespace Pseudoman
         /// </summary>
         Label label2, label5, label6;
 
+        /// <summary>
+        /// Pictureboxes used in bonus mode.
+        /// </summary>
         PictureBox pictureBox2, pictureBox3, pictureBox4, pictureBox5;
 
+        /// <summary>
+        /// Images used in bonus mode.
+        /// </summary>
         Image[] pseuImages;
 
         /// <summary>
@@ -137,21 +145,44 @@ namespace Pseudoman
         /// </summary>
         int pseuScore = 0, papaScore = 0;
 
+        /// <summary>
+        /// Random generator.
+        /// </summary>
         Random rnd = new Random();
 
+        /// <summary>
+        /// Array of TcpListeners used in bonus mode.
+        /// </summary>
         public TcpListener[] servers;
 
+        /// <summary>
+        /// Array of TcpClients used in bonus mode if user is server.
+        /// </summary>
         public TcpClient[] clients;
 
+        /// <summary>
+        /// Array of NetworkStreams corresponding to servers/clients.
+        /// </summary>
         public NetworkStream[] streams;
 
+        /// <summary>
+        /// Number of port client is assigned to.
+        /// </summary>
         public int clientPort;
 
         bool endServer = false;
 
+
+        /// <summary>
+        /// Delegate used in bonus mode to move every character.
+        /// </summary>
+        /// <param name="i"></param>
+        /// <param name="b"></param>
         delegate void MoveChar(int i, out bool b);
 
-        //-------------------------------------------------------------------------
+        #endregion
+
+#region Form thread
         public Form1()
         {
             InitializeComponent();
@@ -285,7 +316,7 @@ namespace Pseudoman
             thread.Start();
         }
 
-#region KeyDown
+
         /// <summary>
         /// When arrow key is pressed, it will be considered as standart input key to fit the needs of KeyDown method.
         /// </summary>
@@ -341,10 +372,9 @@ namespace Pseudoman
             thread.Abort();
             if (server != null) server.Abort();
         }
-        #endregion
+#endregion
 
-        //--------------------------------------------------------------------------------------------------
-#region single/multi
+#region Single/multiplayer methods
         /// <summary>
         /// Main game logic for single and multiplayer.
         /// </summary>
@@ -471,6 +501,10 @@ namespace Pseudoman
 
         }
 
+        /// <summary>
+        /// When main character runs out of lives in multiplayer mode, this method should be called to get rid of him in game map.
+        /// </summary>
+        /// <param name="i">Character id.</param>
         private void Kill(int i)
         {
             map[loc[i, 1]][loc[i, 0]] = 1;
@@ -805,7 +839,7 @@ namespace Pseudoman
         /// <summary>
         /// Teleports character on the other side of map.
         /// </summary>
-        /// <param name="i">Number of character (0 - main, 1-4 - ghosts, 5 - multiplayer second).</param>
+        /// <param name="i">Id of character (0 - main, 1-4 - ghosts, 5 - multiplayer second).</param>
         /// <param name="x">X coordinate on map.</param>
         /// <param name="y">Y coordinate on map.</param>
         private void Teleport(int i, int x, int y)
@@ -1041,7 +1075,7 @@ namespace Pseudoman
         /// <summary>
         /// Moves one of the user-controlled characters.
         /// </summary>
-        /// <param name="player">Number of character to be moved.</param>
+        /// <param name="player">Id of character to be moved.</param>
         /// <param name="pacInCollision">Is main character in collision?</param>
         private void MoveUser(int player, out bool pacInCollision)
         {
@@ -1134,7 +1168,7 @@ namespace Pseudoman
         /// <summary>
         /// Moves one of the AI-controlled characters.
         /// </summary>
-        /// <param name="i">Number of character to be moved.</param>
+        /// <param name="i">Id of character to be moved.</param>
         /// <param name="pacInCollision">Is main character in collision?</param>
         private void MoveAI(int i, out bool pacInCollision)
         {
@@ -1264,7 +1298,7 @@ namespace Pseudoman
         /// Finds collision.
         /// </summary>
         /// <param name="ghost">Returns collision ghost.</param>
-        /// <returns>Number of character (0 - main, 1 - second character for multiplayer).</returns>
+        /// <returns>Id of character (0 - main, 1 - second character for multiplayer).</returns>
         private bool FindCollision(int player, out int ghost)
         {
             ghost = 5;
@@ -1288,7 +1322,7 @@ namespace Pseudoman
         /// <summary>
         /// Sets ghost in collision to default position and default color.
         /// </summary>
-        /// <param name="which">Number of ghost.</param>
+        /// <param name="which">Id of ghost.</param>
         /// <param name="eaterScore">Label with score to be added bonus to.</param>
         private void EatAGhost(int which, Label eaterScore)
         {
@@ -1395,6 +1429,7 @@ namespace Pseudoman
 
         #endregion
 
+#region Bonus mode methods (contains also references to Single/multiplayer methods region)
         /// <summary>
         /// Main logic behind bonus mode.
         /// </summary>
@@ -1513,11 +1548,17 @@ namespace Pseudoman
             }
         }
 
+        /// <summary>
+        /// Dealing with collision in bonus mode; finds which ghost collided with main character and acts accordingly.
+        /// </summary>
+        /// <param name="chased">Id of chased player.</param>
+        /// <param name="dead">Is chased player killed in collision?</param>
+        /// <returns></returns>
         private bool BonusModeCollision(int chased, out bool dead)
         {
             int ii = 5;
             int numplayers = (isMultiplayer) ? 1 : 0;
-            Label eaterScore, ghostscore;
+            Label eaterScore;
             PictureBox ghost = null;
 
             //find which ghost is in collision
@@ -1551,7 +1592,6 @@ namespace Pseudoman
             }
             else
             {
-                
                     switch (ii)
                     {
                         case 4: Invoke((Action)delegate { label1.Text = (int.Parse(label1.Text) + 1000).ToString(); }); break;
@@ -1569,6 +1609,9 @@ namespace Pseudoman
             return false;
         }
 
+        /// <summary>
+        /// Initializes all labels needed in bonus mode.
+        /// </summary>
         private void InitLabels()
         {
             label1.Location = new Point(31, 510);
@@ -1659,11 +1702,19 @@ namespace Pseudoman
             pseuImages[4] = pictureBox1.Image;
         }
 
+        /// <summary>
+        /// Infinite loop that waits for key to be pressed and evaluated by form thread.
+        /// </summary>
+        /// <param name="i"></param>
         private void ReadKey(int i)
         {
             while (desiredKey[i] == default(Keys)) { }
         }
 
+        /// <summary>
+        /// Initialization for bonus round revolving around certain player.
+        /// </summary>
+        /// <param name="player">Id of player that plays main character this round.</param>
         private void BonusRoundInit(int player)
         {
             int i = 0;
@@ -1717,6 +1768,8 @@ namespace Pseudoman
 
 
         }
+
+        #endregion
 
 #region Servers
         private void DoServer()
@@ -1824,6 +1877,10 @@ namespace Pseudoman
             }
         }
         #endregion
+
+#region Actual functional code
+        //TODO: CLEAR!!!
+
 
         //-----------------
         //JUST TRYING
@@ -2385,5 +2442,6 @@ namespace Pseudoman
                     BonusRoundInit(i + 1);
             }
         }
+        #endregion
     }
 }
