@@ -138,6 +138,13 @@ namespace Pseudoman
 
         Image ice, banana;
 
+
+        int frozen, slowed;
+
+        int frozenTime = 20;
+
+        int slowedTime = 40;
+
         /// <summary>
         /// Images used in bonus mode.
         /// </summary>
@@ -198,8 +205,6 @@ namespace Pseudoman
         /// <param name="e"></param>
         private void Form1_Load(object sender, EventArgs e)
         {
-
-
             string[] mapInput = new string[260];
 
             thread = new Thread(GameLogic);
@@ -317,7 +322,6 @@ namespace Pseudoman
             }
             else
             {
-                banana = Image.FromFile("../../../images/Papa_pseudu.png");
                 banana = Image.FromFile("../../../images/small_banana.png");
                 ice = Image.FromFile("../../../images/ice.png");
             }
@@ -415,6 +419,23 @@ namespace Pseudoman
                 if (pacInCollision)
                 {
                     if (Collision())
+                    {
+                        Thread.Sleep(250);
+                        continue;
+                    }
+                }
+
+                if (frozen > 0) 
+                {
+                    frozen--;
+                    Thread.Sleep(250);
+                    continue;
+                }
+
+                if (slowed > 0) 
+                {
+                    slowed--;
+                    if (slowed % 2 == 0) 
                     {
                         Thread.Sleep(250);
                         continue;
