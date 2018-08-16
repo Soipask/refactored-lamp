@@ -135,6 +135,9 @@ namespace Pseudoman
         /// </summary>
         PictureBox pictureBox2, pictureBox3, pictureBox4, pictureBox5;
 
+
+        Image ice, banana;
+
         /// <summary>
         /// Images used in bonus mode.
         /// </summary>
@@ -311,6 +314,12 @@ namespace Pseudoman
                 */
 
                 thread = (isClient)? new Thread(ClientSide): new Thread(ServerSide);
+            }
+            else
+            {
+                banana = Image.FromFile("../../../images/Papa_pseudu.png");
+                banana = Image.FromFile("../../../images/small_banana.png");
+                ice = Image.FromFile("../../../images/ice.png");
             }
 
             thread.Start();
