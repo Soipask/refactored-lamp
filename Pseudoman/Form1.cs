@@ -121,6 +121,11 @@ namespace Pseudoman
         int pelletsCount;
 
         /// <summary>
+        /// Counter until next special pellet appears and its maximum time.
+        /// </summary>
+        int counter, counterTime=10;
+
+        /// <summary>
         /// Level number.
         /// </summary>
         int level;
@@ -134,7 +139,19 @@ namespace Pseudoman
         /// Pictureboxes used in bonus mode.
         /// </summary>
         PictureBox pictureBox2, pictureBox3, pictureBox4, pictureBox5;
+        
 
+        Image ice, banana;
+
+        PictureBox specialPellet;
+
+
+        int frozen, slowed;
+
+        int frozenTime = 20;
+
+        int slowedTime = 40;
+            
         /// <summary>
         /// Images used in bonus mode.
         /// </summary>
@@ -436,6 +453,12 @@ namespace Pseudoman
                     if (edible == 0) MakeGhostsEatersAgain();
                 }
 
+                if(counter > 0)
+                {
+                    counter--;
+                    if (counter == 0) ShowSpecialPellet();
+                }
+
 
                 Thread.Sleep(250);
             }
@@ -536,9 +559,40 @@ namespace Pseudoman
                             ii++;
                             break;
                         case 7: pellet[i, j] = MakeTeleport(2 * j, 2 * i); break;
+                        case 8: StartCounter(); specialPellet = pellet[i, j] = MakeSpecialPellet(i,j);  break;
                     }
                 }
             }
+        }
+
+        private void StartCounter()
+        {
+            counter = counterTime;
+        }
+
+        private PictureBox MakeSpecialPellet(int x, int y)
+        {
+            PictureBox pellet = new PictureBox();
+            pellet.BackColor = Color.Transparent;
+            pellet.Size = new Size(25, 25);
+            pellet.Location = new Point(2 * x - centering, 2 * y - centering);
+            if (rnd.NextDouble() > 0.5)
+            {
+                pellet.Image = ice;
+                pellet.Tag = "icy";
+            }
+            else
+            {
+                pellet.Image = banana;
+                pellet.Tag = "banana";
+            }
+            return pellet;
+        }
+
+        private void ShowSpecialPellet()
+        {
+            if (InvokeRequired) { Invoke((Action)delegate { this.Controls.Add(specialPellet); }); }
+            else { this.Controls.Add(specialPellet); }
         }
 
         /// <summary>
@@ -630,6 +684,7 @@ namespace Pseudoman
                         case 4: case 1: break;
                         case 6: contact = true; break;
                         case 7: return true;
+                        case 8: EatSpecialPellet(h1, h2, playerScore); break;
                         default: return false;
                     }
                 }
@@ -708,7 +763,8 @@ namespace Pseudoman
                 if (pellet[y, x] == null) map[y][x] = 1;
                 else if (pellet[y, x].Width == 5) map[y][x] = 2;
                 else if ((string)pellet[y, x].Tag == "teleport") map[y][x] = 7;
-                else map[y][x] = 3;
+                else if (pellet[y, x].Width > 5) map[y][x] = 3;
+                else map[y][x] = 8;
             }
             if (pellet[y + deltay, x + deltax] != null &&
                 (string)pellet[y + deltay, x + deltax].Tag == "teleport")
@@ -764,7 +820,22 @@ namespace Pseudoman
             Invoke((Action)delegate { playerScore.Text = (int.Parse(playerScore.Text) + 50).ToString(); });
 
         }
+        private void EatSpecialPellet(int i, int j, Label playerScore)
+        {
+            map[i][j] = 1;
+            Invoke((Action)delegate { this.Controls.Remove(pellet[i, j]); });
+            pellet[i, j] = null;
+            Invoke((Action)delegate { playerScore.Text = (int.Parse(playerScore.Text) + 50).ToString(); });
 
+            if ((string)specialPellet.Tag=="banana")
+            {
+                slowed = slowedTime;
+            }
+            else
+            {
+                frozen = frozenTime;
+            }
+        }
         /// <summary>
         /// Starts a timer, while this timer is active, ghosts do not cause harm.
         /// </summary>
