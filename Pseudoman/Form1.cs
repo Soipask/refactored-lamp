@@ -170,7 +170,7 @@ namespace Pseudoman
         /// </summary>
         public int clientPort;
 
-        bool endServer = false;
+        bool changeDesiredKey = true;
 
 
         /// <summary>
@@ -344,7 +344,7 @@ namespace Pseudoman
         {
             int i = (!isBonus || !isClient) ? 0 : clientPort - 1300;
 
-
+            while (!changeDesiredKey) { }
 
             switch (e.KeyCode)
             {
@@ -1773,7 +1773,7 @@ namespace Pseudoman
         #endregion
 
         #region Servers
-        private void DoServer()
+        /*private void DoServer()
         {
             while (!endServer)
             {
@@ -1816,7 +1816,7 @@ namespace Pseudoman
                 canContinue = true;
             }
         }
-
+        */
         private void SetDesKeyServer(int i)
         {
             if (clients[i - 1] == null) return;
@@ -1841,7 +1841,7 @@ namespace Pseudoman
             }
         }
 
-        private void DoClient()
+        /*private void DoClient()
         {
             while (desiredKey[clientPort - 1300] == default(Keys)) { }
 
@@ -1876,7 +1876,7 @@ namespace Pseudoman
 
                 canContinue = true;
             }
-        }
+        }*/
         #endregion
 
         #region Actual functioning code
@@ -1886,7 +1886,6 @@ namespace Pseudoman
         //-----------------
         //JUST TRYING
         //-----------------
-        #region Comm
         /*
     private void ServerSide()
     {
@@ -2214,8 +2213,7 @@ namespace Pseudoman
         }
     }
     */
-
-        #endregion
+    
         private void Bonus()
         {
             //INITIALIZATION
@@ -2271,6 +2269,7 @@ namespace Pseudoman
                 //GAME CYCLE
                 while (!dead)
                 {
+                    changeDesiredKey = false;
                     if (isClient)
                     {
                         SendMove(writer);
@@ -2281,6 +2280,7 @@ namespace Pseudoman
                         SetAllDesiredKeys();
                         SendUserMoves(writer, n);
                     }
+                    
                     
         #region Moving pseudu...
                     moves[i](i, out pacInCollision);
@@ -2339,6 +2339,8 @@ namespace Pseudoman
                     {
                         SendAIMoves(writer, n);
                     }
+
+                    changeDesiredKey = true;
 
                     SpecialControl();
 
