@@ -329,6 +329,11 @@ namespace Pseudoman
 
                 thread = new Thread(Bonus);
             }
+            else
+            {
+                banana = Image.FromFile("../../../images/small_banana.png");
+                ice = Image.FromFile("../../../images/ice.png");
+            }
 
             thread.Start();
         }
@@ -428,6 +433,23 @@ namespace Pseudoman
                         continue;
                     }
                 }
+
+                if (frozen > 0)
+                {
+                    frozen--;
+                    Thread.Sleep(250);
+                    continue;
+                }
+                if (slowed > 0)
+                {
+                    slowed--;
+                    if (slowed % 2 == 0)
+                    {
+                        Thread.Sleep(250);
+                        continue;
+                    }
+                }
+
 
                 //Ghosts movement--------------------------------------
                 for (int i = 0; i < 4; i++)
