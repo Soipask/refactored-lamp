@@ -170,7 +170,7 @@ namespace Pseudoman
         /// </summary>
         public int clientPort;
 
-        bool changeDesiredKey = true;
+        bool canChangeDesiredKey = true;
 
 
         /// <summary>
@@ -344,7 +344,7 @@ namespace Pseudoman
         {
             int i = (!isBonus || !isClient) ? 0 : clientPort - 1300;
 
-            while (!changeDesiredKey) { }
+            while (!canChangeDesiredKey) { }
 
             switch (e.KeyCode)
             {
@@ -2269,7 +2269,7 @@ namespace Pseudoman
                 //GAME CYCLE
                 while (!dead)
                 {
-                    changeDesiredKey = false;
+                    canChangeDesiredKey = false;
                     if (isClient)
                     {
                         SendMove(writer);
@@ -2340,7 +2340,7 @@ namespace Pseudoman
                         SendAIMoves(writer, n);
                     }
 
-                    changeDesiredKey = true;
+                    canChangeDesiredKey = true;
 
                     SpecialControl();
 
